@@ -26,6 +26,8 @@ export interface SyncTransport {
   push(changes: PushChange[], deviceId: string): Promise<PushResult>;
   pull(since: number, limit: number): Promise<PulledRow[]>;
   pullCount(since: number): Promise<number>;
+  /** Yöneticinin destelerini bu kullanıcının koleksiyonuna kopyalar/günceller (opsiyonel) */
+  syncShared?(): Promise<number>;
 }
 
 /** Resim dosyaları için (Supabase Storage) */

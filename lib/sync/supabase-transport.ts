@@ -37,6 +37,12 @@ export class SupabaseSyncTransport implements SyncTransport {
     if (error) throw toSyncError(error);
     return Number(data ?? 0);
   }
+
+  async syncShared(): Promise<number> {
+    const { data, error } = await this.client.rpc("sync_shared_decks");
+    if (error) throw toSyncError(error);
+    return Number(data ?? 0);
+  }
 }
 
 export class SupabaseMediaTransport implements MediaTransport {

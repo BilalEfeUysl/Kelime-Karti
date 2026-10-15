@@ -1,6 +1,8 @@
 "use client";
 // Desteler sayfasında: ön yüzü karışık (kelime + cümleler) kelime destesi
 // bulunursa "kartları düzenleyeyim mi?" önerisi. Ctrl/Cmd+Z ile geri alınabilir.
+// Sadece yöneticiye gösterilir: üyelerdeki desteler yöneticinin destelerinin
+// kopyasıdır; yönetici düzenleyince düzenlenmiş hâli onlara da gelir.
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
 import { useApp } from "@/components/app/AppProvider";
@@ -18,7 +20,7 @@ function isDismissed(id: string) {
 }
 
 export function TidyBanner() {
-  const { db } = useApp();
+  const { db, profile } = useApp();
   const undo = useUndo();
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export function TidyBanner() {
   }, [db, dismissed]);
 
   if (done) return <Notice tone="ok">{done}</Notice>;
-  if (!db || !found) return null;
+  if (!db || !found || profile?.role !== "admin") return null;
   const { c, deckName } = found;
   return (
     <Notice tone="info">

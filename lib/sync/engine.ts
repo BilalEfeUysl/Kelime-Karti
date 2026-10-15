@@ -144,6 +144,18 @@ export class SyncEngine {
         );
       }
       await this.pushAll();
+      // Yöneticinin desteleri (paylaşılan desteler) sunucuda bu kullanıcıya
+      // kopyalanır; hemen ardından gelen pull onları indirir. Bu adımdaki bir
+      // sorun eşlemenin geri kalanını durdurmasın.
+      if (transport.syncShared) {
+        try {
+          await transport.syncShared();
+        } catch (err) {
+          const e = toSyncError(err);
+          if (e.kind === "offline" || e.kind === "auth") throw e;
+          console.warn("Paylaşılan desteler alınamadı:", e.message);
+        }
+      }
       await this.pullAll();
       const now = db.now();
       await db.setState("last_sync_at", now);

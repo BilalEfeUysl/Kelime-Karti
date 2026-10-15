@@ -137,7 +137,10 @@ export async function getMediaData(
 ): Promise<{ data: ArrayBuffer; mime: string } | null> {
   const local = await db.media_blobs.get(hash);
   if (local) return { data: local.data, mime: local.mime };
-  const row = await db.media.get(mediaIdFor(hash, db.userId));
+  // Paylaşılan destelerden gelen resimlerin satır id'si farklıdır: hash'e göre de bak
+  const row =
+    (await db.media.get(mediaIdFor(hash, db.userId))) ??
+    (await db.media.where("hash").equals(hash).filter((m) => m.deleted_at === null && !!m.uploaded_at).first());
   if (!row || !row.uploaded_at || !row.storage_path || !transport) return null;
   const data = await transport.download(row.storage_path);
   await db.media_blobs.put({

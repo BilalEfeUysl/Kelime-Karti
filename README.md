@@ -301,6 +301,18 @@ Destenin ⋯ menüsü → **Seçenekler** (ya da çalışma sayfasındaki **Dest
 - **Zamanlayıcılar:** en uzun cevap süresi (istatistik için), cevabı otomatik gösterme ve otomatik ilerleme (“İyi” / “Tekrar” say ya da göm).
 - **Gün başlangıcı ve saat dilimi:** **Ayarlar → Çalışma** (varsayılan 04:00, Europe/Istanbul).
 
+### Yöneticinin desteleri herkeste (paylaşılan desteler)
+
+Yöneticinin (Bilal) **içinde kart olan her destesi** diğer herkesin deste listesinde de kendiliğinden çıkar. Herkes **kendi kopyasını kendi hızında** çalışır: kimin hangi kelimeyi bildiği, tekrar zamanları ve istatistikler kişiye özeldir.
+
+- Yönetici sonradan kart ekler, düzeltir ya da silerse bu değişiklik diğerlerinde de bir sonraki eşlemede görünür. Çalışma ilerlemesi bozulmaz.
+- Bir üye kendi kopyasında bir kartı düzenlerse onun düzeltmesi kalır (yönetici aynı kartı tekrar düzenleyene kadar).
+- Üyelerin kendi eklediği desteler sadece kendilerinde kalır.
+- "Kartları düzenle" önerisi sadece yöneticiye çıkar: yönetici desteyi düzenleyince düzenlenmiş hâli herkese gider.
+- Boş "Varsayılan" deste paylaşılmaz. Resimler de gelir (dosyalar yöneticinin Storage klasöründen okunur).
+
+Nasıl çalışır: istemci her eşlemede `sync_shared_decks()` fonksiyonunu çağırır; sunucu eksik kopyaları ekler, eskimiş olanları günceller (`supabase/migrations/20261016000007_shared_decks.sql`). Test: `tests/shared.test.ts`.
+
 ### Filtreli desteler ve özel çalışma
 
 - **Filtreli deste:** bir aramaya uyan kartları geçici bir desteye toplar (Kartlar'da bir arama yapıp **Bunları çalış**, ya da destenin çalışma ekranında **Özel çalışma**). Ayarlar: arama, en fazla kart, sıra, **cevaplarıma göre yeniden zamanla** (kapalıysa sadece alıştırma, zamanlama değişmez), isteğe bağlı **ikinci filtre**. Menüden **Yeniden oluştur**, **Boşalt**, **Filtreyi düzenle**, **Sil** (kartlar kendi destelerine döner). Listede “F” rozetiyle görünür; askıdaki ve yarına ertelenmiş kartlar alınmaz.

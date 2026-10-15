@@ -95,6 +95,11 @@ export class TestServer {
         );
         return res.rows[0].n;
       },
+      async syncShared(): Promise<number> {
+        if (!t.online) throw offlineError();
+        const res = await server.asUser(uid, (tx) => tx.query<{ n: number }>("select public.sync_shared_decks()::int as n"));
+        return res.rows[0].n;
+      },
     };
     return t;
   }
