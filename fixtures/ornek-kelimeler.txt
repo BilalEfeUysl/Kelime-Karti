@@ -1,0 +1,8 @@
+#separator:tab
+#html:false
+#tags column:4
+abandon	terk etmek	They abandoned the car.	yds fiil	Arabayı terk ettiler.
+acquire	edinmek	"She acquired a new skill.
+The company was acquired."	yds	
+	boş kelime			
+benefit	fayda, yarar			

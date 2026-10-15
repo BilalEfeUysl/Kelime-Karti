@@ -1,0 +1,23 @@
+# bağımlılıklar
+/node_modules
+
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+
+# ortam değişkenleri (gizli anahtarlar!)
+.env
+.env.local
+.env.*.local
+
+# diğer
+.DS_Store
+*.log
+/coverage
+.vercel
+public/sql-wasm-browser.wasm
+
+# Claude Code yerel ayarları
+/.claude/
