@@ -15,7 +15,8 @@ const DOT: Record<Tone, string> = {
   bad: "bg-danger",
 };
 
-export function SyncIndicator({ className: extra = "" }: { className?: string }) {
+/** compact: dar yan menüde sadece renkli nokta görünür (yazı, menü açılınca) */
+export function SyncIndicator({ className: extra = "", compact = false }: { className?: string; compact?: boolean }) {
   const { engine } = useApp();
   const status = useSyncStatus(engine);
   const { pending, failed } = useOutboxCounts();
@@ -46,17 +47,19 @@ export function SyncIndicator({ className: extra = "" }: { className?: string })
     text = failed > 0 ? `${failed} değişiklik gönderilemedi` : "Eşlendi";
   }
 
-  const className = `inline-flex min-h-9 max-w-[60vw] items-center gap-2 rounded-full border border-rule bg-surface px-3 text-[13px] font-medium text-ink md:max-w-none ${extra}`;
+  const className = compact
+    ? `inline-flex min-h-9 min-w-9 items-center justify-center gap-2 rounded-full border border-rule bg-surface text-[13px] font-medium text-ink sidebar-open:justify-start sidebar-open:px-3 ${extra}`
+    : `inline-flex min-h-9 max-w-[60vw] items-center gap-2 rounded-full border border-rule bg-surface px-3 text-[13px] font-medium text-ink md:max-w-none ${extra}`;
   const content = (
     <>
       <span aria-hidden className={`size-2 shrink-0 rounded-full ${DOT[tone]}`} />
-      <span className="truncate">{text}</span>
+      <span className={compact ? "sr-only truncate sidebar-open:not-sr-only" : "truncate"}>{text}</span>
     </>
   );
 
   if (status.phase === "auth") {
     return (
-      <Link href="/giris" className={className} title={status.error ?? undefined}>
+      <Link href="/giris" className={className} title={status.error ?? text}>
         {content}
       </Link>
     );
@@ -66,7 +69,7 @@ export function SyncIndicator({ className: extra = "" }: { className?: string })
       type="button"
       className={className}
       onClick={() => void engine?.sync()}
-      title={status.error ?? "Şimdi eşle"}
+      title={status.error ?? (compact ? `${text} (tıkla: şimdi eşle)` : "Şimdi eşle")}
       aria-live="polite"
     >
       {content}

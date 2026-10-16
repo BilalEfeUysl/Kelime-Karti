@@ -63,7 +63,7 @@ it("not tipini ve notları düzenler", async () => {
   expect(type.fields.map((f) => f.name)).toEqual(["Kelime", "Anlam", "Okunuş"]);
   expect(type.templates[0].back).toBe("{{FrontSide}}<hr id=answer>{{Anlam}}");
   expect(r.question).toContain('<div class="kk-pron">(piyı) isim, sayılabilen</div>');
-  expect(r.question).toContain("<b>peers</b> in Japan.");
+  expect(r.question).toContain('<b class="kk-hl">peers</b> in Japan.');
   expect(r.question).not.toContain("Everyone");
   expect(r.answer).toMatch(/peers<\/b> in Japan[\s\S]*<hr id=answer>[\s\S]*anlam/);
 });

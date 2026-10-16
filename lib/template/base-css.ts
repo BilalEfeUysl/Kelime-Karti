@@ -32,6 +32,8 @@ code#typeans { font-family: ui-monospace, Menlo, monospace; display: inline-bloc
 .kk-example-box { margin-top: 16px; }
 .kk-pron { font-size: 0.6em; opacity: 0.7; margin-top: 4px; }
 .kk-example { font-size: 0.85em; font-style: italic; }
+.kk-hl { color: #2f62b8; }
+.nightMode .kk-hl { color: #a9c0ec; }
 .kk-example-tr, .kk-examples .kk-example-tr { font-style: normal; font-size: 0.9em; opacity: 0.75; margin-top: 2px; }
 .kk-examples { text-align: left; display: inline-block; font-size: 0.85em; margin: 8px 0; padding-left: 1.2em; }
 .kk-more-examples { margin-top: 10px; font-size: 0.8em; }

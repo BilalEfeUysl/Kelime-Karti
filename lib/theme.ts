@@ -3,8 +3,21 @@
 export type ThemePref = "system" | "light" | "dark";
 export const THEME_KEY = "kk.theme";
 
-/** Sayfa çizilmeden ÖNCE çalışan küçük betik (beyaz yanıp sönmeyi önler). */
-export const themeInitScript = `(function(){try{var p=localStorage.getItem('${THEME_KEY}')||'system';var d=p==='dark'||(p==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';}catch(e){}})();`;
+export const SIDEBAR_KEY = "kk.sidebar";
+
+/** Sayfa çizilmeden ÖNCE çalışan küçük betik (beyaz yanıp sönmeyi ve yan
+ *  menünün açılıp kapanırken zıplamasını önler). */
+export const themeInitScript = `(function(){var r=document.documentElement;try{var p=localStorage.getItem('${THEME_KEY}')||'system';var d=p==='dark'||(p==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';r.dataset.sidebar=localStorage.getItem('${SIDEBAR_KEY}')==='open'?'open':'closed';}catch(e){r.dataset.sidebar='closed';}})();`;
+
+/** Bilgisayardaki yan menüyü aç/kapat (bu cihazda hatırlanır) */
+export function setSidebarOpen(open: boolean) {
+  document.documentElement.dataset.sidebar = open ? "open" : "closed";
+  try {
+    localStorage.setItem(SIDEBAR_KEY, open ? "open" : "closed");
+  } catch {
+    // önemli değil
+  }
+}
 
 export function getThemePref(): ThemePref {
   try {

@@ -205,7 +205,7 @@ describe("örnek cümleler ({{Example}} / {{Examples}})", () => {
 
   it("soruda seçilen cümle (çevirisiz), kelime kalın", () => {
     const r = renderCard(base);
-    expect(r.question).toContain("Never <b>abandon</b> hope.");
+    expect(r.question).toContain('Never <b class="kk-hl">abandon</b> hope.');
     expect(r.question).not.toContain("terk ettiler");
     expect(r.question).not.toContain("Diğer örnekleri");
   });
@@ -215,7 +215,7 @@ describe("örnek cümleler ({{Example}} / {{Examples}})", () => {
     expect(r.answer).toContain("<details");
     expect(r.answer).toContain("Diğer örnekleri göster (2)");
     expect(r.answer).toContain("Arabayı terk ettiler.");
-    expect(r.answer).toContain("They <b>abandoned</b> the car.");
+    expect(r.answer).toContain('They <b class="kk-hl">abandoned</b> the car.');
   });
 
   it("{{Examples}} hepsini listeler; örnek yoksa koşul boş", () => {

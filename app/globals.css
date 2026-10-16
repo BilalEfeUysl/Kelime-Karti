@@ -3,6 +3,9 @@
 /* Koyu tema: <html class="dark"> olduğunda */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Bilgisayardaki yan menü açıkken: <html data-sidebar="open"> */
+@custom-variant sidebar-open (&:where([data-sidebar="open"], [data-sidebar="open"] *));
+
 /* Renk ve yazı tipi sistemi — "fiş kartı" teması:
    soğuk kâğıt zemin, mürekkep mavisi, fosforlu kalem sarısı, kart başındaki kırmızı çizgi */
 @theme {

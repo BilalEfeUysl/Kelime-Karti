@@ -9,6 +9,8 @@ import { Spinner } from "@/components/ui";
 import { useApp } from "./AppProvider";
 import { InitialSyncProgress, InstallBanner, SessionBanner, UpdateBanner } from "./Banners";
 import { SyncIndicator } from "./SyncIndicator";
+import { ThemeToggle } from "./ThemeToggle";
+import { setSidebarOpen } from "@/lib/theme";
 import { useUndo, useUndoEvents } from "./undo";
 import { useKeyStatus } from "@/components/ai/hooks";
 import { aiRunner } from "@/lib/ai/runner";
@@ -100,7 +102,7 @@ function UndoKeys() {
   }, [undo.manager]);
   if (!toast) return null;
   return (
-    <div role="status" className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4 md:bottom-6 md:pl-60">
+    <div role="status" className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4 md:bottom-6 md:pl-[4.25rem] md:sidebar-open:pl-56">
       <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-rule bg-surface px-3.5 py-2 text-sm shadow-lg">
         {toast}
         {undo.canRedo && toast.startsWith("Geri") && (
@@ -117,6 +119,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { ready, user, db } = useApp();
   const [immersive, setImmersive] = useState(false);
   const [wide, setWide] = useState(false);
+  const [sidebarOpen, setSidebarOpenState] = useState(false);
+  useEffect(() => setSidebarOpenState(document.documentElement.dataset.sidebar === "open"), []);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -135,38 +139,60 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <ShellContext.Provider value={{ setImmersive, setWide }}>
-      {/* Bilgisayarda solda sabit menü: genişliği hiçbir sayfada değişmez */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-56 flex-col border-r border-rule bg-surface md:flex">
-        <Link href="/" className="flex h-16 shrink-0 items-center px-5 font-display text-[19px] font-semibold tracking-tight">
-          {APP_NAME}
-        </Link>
+      {/* Bilgisayarda solda sabit menü: kapalıyken sadece simgeler, açılınca yazılar da görünür */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[4.25rem] flex-col border-r border-rule bg-surface transition-[width] duration-150 md:flex sidebar-open:w-56">
+        <div className="flex h-16 shrink-0 items-center gap-2 px-3">
+          <button
+            type="button"
+            onClick={() => {
+              setSidebarOpen(!sidebarOpen);
+              setSidebarOpenState(!sidebarOpen);
+            }}
+            aria-expanded={sidebarOpen}
+            aria-label={sidebarOpen ? "Menüyü daralt" : "Menüyü genişlet"}
+            title={sidebarOpen ? "Menüyü daralt" : "Menüyü genişlet"}
+            className="grid size-10 shrink-0 place-items-center rounded-lg text-ink-soft hover:bg-ink/5 hover:text-ink"
+          >
+            {icon("M4 6h16M4 12h16M4 18h16")}
+          </button>
+          <Link href="/" className="hidden truncate font-display text-[18px] font-semibold tracking-tight sidebar-open:block">
+            {APP_NAME}
+          </Link>
+        </div>
         <nav aria-label="Ana menü" className="flex-1 overflow-y-auto px-3">
           <ul className="space-y-0.5">
             {NAV.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  title={item.label}
                   aria-current={isActive(item.href) ? "page" : undefined}
-                  className="flex min-h-10 items-center gap-3 rounded-lg px-3 text-[15px] font-medium text-ink-soft hover:bg-ink/5 hover:text-ink aria-[current=page]:bg-accent/10 aria-[current=page]:text-accent"
+                  className="flex min-h-10 items-center justify-center gap-3 rounded-lg text-[15px] font-medium text-ink-soft hover:bg-ink/5 hover:text-ink aria-[current=page]:bg-accent/10 aria-[current=page]:text-accent sidebar-open:justify-start sidebar-open:px-3"
                 >
                   {item.icon}
-                  {item.label}
+                  <span className="hidden truncate sidebar-open:inline">{item.label}</span>
                 </Link>
               </li>
             ))}
           </ul>
         </nav>
-        <div className="shrink-0 border-t border-rule p-3">{user && <SyncIndicator className="w-full" />}</div>
+        <div className="flex shrink-0 flex-col items-center gap-2 border-t border-rule p-3 sidebar-open:flex-row">
+          <ThemeToggle />
+          {user && <SyncIndicator compact className="sidebar-open:min-w-0 sidebar-open:flex-1" />}
+        </div>
       </aside>
 
-      <div className="flex min-h-dvh flex-col md:pl-56">
+      <div className="flex min-h-dvh flex-col md:pl-[4.25rem] md:sidebar-open:pl-56">
         {/* Telefonda üst çubuk */}
         <header className="sticky top-0 z-20 border-b border-rule bg-paper/95 pt-safe backdrop-blur md:hidden">
           <div className="flex h-14 items-center gap-3 px-safe">
             <Link href="/" className="font-display text-[19px] font-semibold tracking-tight">
               {APP_NAME}
             </Link>
-            <div className="ml-auto min-w-0">{user && <SyncIndicator />}</div>
+            <div className="ml-auto flex min-w-0 items-center gap-1">
+              <ThemeToggle />
+              {user && <SyncIndicator />}
+            </div>
           </div>
         </header>
 
@@ -212,10 +238,11 @@ export function PublicShell({ children, wide = false }: { children: ReactNode; w
   const width = wide ? "max-w-2xl" : "max-w-md";
   return (
     <div className="flex min-h-dvh flex-col pt-safe pb-safe">
-      <header className={`mx-auto flex h-16 w-full items-center px-safe ${width}`}>
+      <header className={`mx-auto flex h-16 w-full items-center justify-between px-safe ${width}`}>
         <Link href="/" className="font-display text-[19px] font-semibold tracking-tight">
           {APP_NAME}
         </Link>
+        <ThemeToggle />
       </header>
       <main className={`mx-auto w-full flex-1 px-safe pb-12 pt-6 ${width}`}>
         <div className="mb-5 empty:hidden">

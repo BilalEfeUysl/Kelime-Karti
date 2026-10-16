@@ -10,7 +10,6 @@ export function ShortcutHelp({ onClose }: { onClose: () => void }) {
     ["Enter", "Cevabı göster / İyi"],
     ["Ctrl/Cmd+Z", "Geri al"],
     ["Ctrl/Cmd+Shift+Z", "Yinele"],
-    ["Ctrl+1…7", "Bayrak"],
     ["?", "Bu liste"],
   ];
   return (

@@ -13,11 +13,6 @@ export type StudyAction =
   | "easy"
   | "edit"
   | "info"
-  | "mark"
-  | "buryCard"
-  | "buryNote"
-  | "suspendCard"
-  | "suspendNote"
   | "gemini";
 
 export const ACTION_LABELS: Record<StudyAction, string> = {
@@ -28,11 +23,6 @@ export const ACTION_LABELS: Record<StudyAction, string> = {
   easy: "Kolay",
   edit: "Notu düzenle",
   info: "Kart bilgisi",
-  mark: "Notu işaretle",
-  buryCard: "Kartı yarına ertele",
-  buryNote: "Notu yarına ertele",
-  suspendCard: "Kartı askıya al",
-  suspendNote: "Notu askıya al",
   gemini: "Gemini'ye sor",
 };
 
@@ -44,11 +34,6 @@ export const DEFAULT_SHORTCUTS: Record<StudyAction, string> = {
   easy: "4",
   edit: "e",
   info: "i",
-  mark: "*",
-  buryCard: "-",
-  buryNote: "=",
-  suspendCard: "@",
-  suspendNote: "!",
   gemini: "g",
 };
 
@@ -85,7 +70,10 @@ function load(): Appearance {
     fontScale: Math.min(1.6, Math.max(0.8, Number(raw.fontScale) || 1)),
     cardZoom: Math.min(1.5, Math.max(0.8, Number(raw.cardZoom) || 1)),
     darkCards: raw.darkCards === "force" || raw.darkCards === "off" ? raw.darkCards : "auto",
-    shortcuts: { ...DEFAULT_SHORTCUTS, ...(raw.shortcuts ?? {}) },
+    // Sadece bilinen eylemler (eski sürümlerde kaldırılmış eylemler kalmış olabilir)
+    shortcuts: Object.fromEntries(
+      (Object.keys(DEFAULT_SHORTCUTS) as StudyAction[]).map((a) => [a, raw.shortcuts?.[a] ?? DEFAULT_SHORTCUTS[a]]),
+    ) as Record<StudyAction, string>,
   };
   return cached;
 }

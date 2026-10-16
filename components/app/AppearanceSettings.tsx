@@ -35,7 +35,7 @@ export function AppearanceSettings() {
   }, [capture, a.shortcuts]);
 
   return (
-    <div id="gorunum" className="mt-5 space-y-4 border-t border-rule pt-4">
+    <div id="gorunum" className="mt-4 space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <SelectField
           label="Kart yazı boyutu"

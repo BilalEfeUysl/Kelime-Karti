@@ -75,14 +75,14 @@ function lookupField(ctx: Ctx, name: string): string | undefined {
   return ctx.fields.get(name) ?? ctx.fieldsLower.get(name.toLowerCase());
 }
 
-/** Örnek cümlede kelimeyi kalın göster ("abandon" → "abandoned" da yakalanır). */
+/** Örnek cümlede kelimeyi kalın ve hafif renkli göster ("abandon" → "abandoned" da yakalanır). */
 function highlightWord(text: string, word: string): string {
   const safe = escapeHtml(text);
   const w = word.trim();
   if (w.length < 2) return safe;
   const pattern = escapeHtml(w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   try {
-    return safe.replace(new RegExp(`(?<![\\p{L}])(${pattern}[\\p{L}]*)`, "giu"), "<b>$1</b>");
+    return safe.replace(new RegExp(`(?<![\\p{L}])(${pattern}[\\p{L}]*)`, "giu"), '<b class="kk-hl">$1</b>');
   } catch {
     return safe;
   }

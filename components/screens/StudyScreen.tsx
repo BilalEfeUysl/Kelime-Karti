@@ -2,8 +2,7 @@
 // ÇALIŞMA EKRANI
 //   Genel bakış → "Çalışmaya başla" → soru → "Cevabı göster" (Boşluk/Enter)
 //   → Tekrar/Zor/İyi/Kolay (1-4). Butonların üstünde sonraki aralık önizlemesi.
-// Kısayollar: Ctrl/Cmd+Z geri al (Ctrl/Cmd+Shift+Z yinele), E düzenle, I kart bilgisi, G Gemini, Ctrl+1..7 bayrak,
-//   * işaretle, - kartı göm, = notu göm, @ kartı askıya al, ! notu askıya al.
+// Kısayollar: Ctrl/Cmd+Z geri al (Ctrl/Cmd+Shift+Z yinele), E düzenle, I kart bilgisi, G Gemini.
 // Her şey cihazdaki veritabanında olur; internet gerekmez.
 import { useLiveQuery } from "dexie-react-hooks";
 import Link from "next/link";
@@ -16,11 +15,11 @@ import { DECK_LIMITS_SETTING, useDayInfo, useDeckLimits, useDecks, useOptionsRes
 import { type CardKey, CardFrame } from "@/components/card/CardFrame";
 import { CardInfoModal } from "@/components/study/CardInfoModal";
 import { EditNoteModal } from "@/components/study/EditNoteModal";
-import { Button, Dropdown, MenuItem, Notice } from "@/components/ui";
+import { Button, Notice } from "@/components/ui";
 import type { CardRow, DeckRow } from "@/lib/db/types";
 import { buildDeckTree, flattenDeckTree } from "@/lib/decks";
 import { resolveMediaInHtml } from "@/lib/media-url";
-import { approvedExamples, deleteNotes } from "@/lib/notes";
+import { approvedExamples } from "@/lib/notes";
 import type { DeckOptions } from "@/lib/scheduler/config";
 import { type Answer, ANSWER_LABELS, ANSWERS, previewAnswers } from "@/lib/scheduler/fsrs";
 import { buildStudyQueue, type QueueKind } from "@/lib/scheduler/queue";
@@ -28,11 +27,7 @@ import {
   buryCards,
   chooseExample,
   MARKED_TAG,
-  noteCardIds,
   recordAnswer,
-  setSuspended,
-  toggleFlag,
-  toggleMark,
 } from "@/lib/study/actions";
 import { FLAG_COLORS, FLAG_NAMES } from "@/lib/flags";
 import { renderCard } from "@/lib/template/render";
@@ -474,38 +469,15 @@ function Session({
   const doUndo = useCallback(() => void undo.manager?.undo(), [undo.manager]);
   const doRedo = useCallback(() => void undo.manager?.redo(), [undo.manager]);
 
-  const act = useCallback(
-    async (action: "flag" | "mark" | "buryCard" | "buryNote" | "suspendCard" | "suspendNote" | "deleteNote", flag = 0) => {
-      if (!db || !card) return;
-      const cardId = card.id;
-      const meta = { cardId };
-      if (action === "flag") await undo.run("Bayrak", () => toggleFlag(db, [cardId], flag), meta);
-      else if (action === "mark") {
-        const on = await undo.run("İşaret", () => toggleMark(db, card.note_id), meta);
-        flash(on ? "İşaretlendi" : "İşaret kaldırıldı");
-      } else if (action === "buryCard") {
-        await undo.run("Kartı erteleme", () => buryCards(db, [cardId], nextDayStartRef.current), meta);
-        flash("Kart yarına ertelendi");
-      } else if (action === "buryNote") {
-        await undo.run("Notu erteleme", async () => buryCards(db, await noteCardIds(db, card.note_id), nextDayStartRef.current), meta);
-        flash("Not yarına ertelendi");
-      } else if (action === "suspendCard") {
-        await undo.run("Kartı askıya alma", () => setSuspended(db, [cardId], true), meta);
-        flash("Kart askıya alındı");
-      } else if (action === "suspendNote") {
-        await undo.run("Notu askıya alma", async () => setSuspended(db, await noteCardIds(db, card.note_id), true), meta);
-        flash("Not askıya alındı");
-      } else if (action === "deleteNote") {
-        await undo.run("Not silme", () => deleteNotes(db, [card.note_id]), meta);
-        flash("Not silindi");
-      }
-      if (action !== "flag" && action !== "mark") {
-        setShowAnswer(false);
-        setCurrentId(null);
-      }
-    },
-    [db, card, undo],
-  );
+  // Otomatik ilerlemede "kartı yarına ertele" seçeneği için
+  const buryCurrent = useCallback(async () => {
+    if (!db || !card) return;
+    const cardId = card.id;
+    await undo.run("Kartı erteleme", () => buryCards(db, [cardId], nextDayStartRef.current), { cardId });
+    flash("Kart yarına ertelendi");
+    setShowAnswer(false);
+    setCurrentId(null);
+  }, [db, card, undo]);
 
   // Otomatik cevap gösterme / ilerleme (deste seçeneklerinde ayarlanır; pencere açıkken durur)
   useEffect(() => {
@@ -514,7 +486,7 @@ function Session({
     if (!secs) return;
     const t = setTimeout(() => {
       if (!showAnswer) setShowAnswer(true);
-      else if (options.autoAdvanceAction === "bury") void act("buryCard");
+      else if (options.autoAdvanceAction === "bury") void buryCurrent();
       else void answer(options.autoAdvanceAction === "again" ? 1 : 3);
     }, secs * 1000);
     return () => clearTimeout(t);
@@ -527,7 +499,6 @@ function Session({
       const mod = k.ctrl || k.meta;
       if (mod && k.key.toLowerCase() === "z") return k.shift ? doRedo() : doUndo();
       if (k.ctrl && k.key.toLowerCase() === "y") return doRedo();
-      if (k.ctrl && /^[1-7]$/.test(k.key)) return void act("flag", Number(k.key));
       if (mod || k.alt) return;
       if (k.key === "?") return setModal("keys");
       if (k.key === "Enter") {
@@ -557,24 +528,9 @@ function Session({
         case "gemini":
           if (navigator.onLine) setModal("ai");
           break;
-        case "mark":
-          void act("mark");
-          break;
-        case "buryCard":
-          void act("buryCard");
-          break;
-        case "buryNote":
-          void act("buryNote");
-          break;
-        case "suspendCard":
-          void act("suspendCard");
-          break;
-        case "suspendNote":
-          void act("suspendNote");
-          break;
       }
     },
-    [modal, showAnswer, answer, doUndo, doRedo, act, look],
+    [modal, showAnswer, answer, doUndo, doRedo, look],
   );
 
   useEffect(() => {
@@ -582,7 +538,7 @@ function Session({
       if (isTypingTarget(e.target)) return;
       // Geri al / yinele kısayolları genel olarak (AppShell) işlenir
       if ((e.ctrlKey || e.metaKey) && /^[zy]$/i.test(e.key)) return;
-      if (e.key === " " || e.key === "Enter" || (e.ctrlKey && /^[1-7]$/.test(e.key))) e.preventDefault();
+      if (e.key === " " || e.key === "Enter") e.preventDefault();
       if (e.key === "?" && modal === "keys") return;
       handleKey({ key: e.key, code: e.code, ctrl: e.ctrlKey, meta: e.metaKey, shift: e.shiftKey, alt: e.altKey });
     };
@@ -674,60 +630,10 @@ function Session({
         <button type="button" onClick={() => setModal("edit")} className="rounded-md px-2.5 py-1.5 text-ink-soft hover:bg-ink/5 hover:text-ink" title="E">
           Düzenle
         </button>
-        <button type="button" onClick={() => setModal("info")} className="hidden rounded-md px-2.5 py-1.5 text-ink-soft hover:bg-ink/5 hover:text-ink sm:block" title="I">
+        <button type="button" onClick={() => setModal("info")} className="rounded-md px-2.5 py-1.5 text-ink-soft hover:bg-ink/5 hover:text-ink" title="I">
           Kart bilgisi
         </button>
         <AskButton onClick={() => setModal("ai")} />
-        <Dropdown align="left" width={256} trigger="Diğer ▾" className="rounded-md px-2.5 py-1.5 text-ink-soft hover:bg-ink/5 hover:text-ink">
-          {(closeMenu) => (
-            <>
-              <div className="flex flex-wrap gap-1 px-2 py-1.5">
-                {FLAG_COLORS.slice(1).map((c, i) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => {
-                      closeMenu();
-                      void act("flag", i + 1);
-                    }}
-                    className={`size-7 rounded-full border-2 ${card.flags === i + 1 ? "border-ink" : "border-transparent"}`}
-                    style={{ background: c }}
-                    aria-label={`${FLAG_NAMES[i + 1]} bayrak (Ctrl+${i + 1})`}
-                  />
-                ))}
-              </div>
-              <div className="sm:hidden">
-                <MenuItem
-                  onClick={() => {
-                    closeMenu();
-                    setModal("info");
-                  }}
-                >
-                  Kart bilgisi
-                </MenuItem>
-              </div>
-              {[
-                ["mark", marked ? "İşareti kaldır (*)" : "Notu işaretle (*)"],
-                ["buryCard", "Kartı yarına ertele (-)"],
-                ["buryNote", "Notu yarına ertele (=)"],
-                ["suspendCard", "Kartı askıya al (@)"],
-                ["suspendNote", "Notu askıya al (!)"],
-                ["deleteNote", "Notu sil"],
-              ].map(([a, label]) => (
-                <MenuItem
-                  key={a}
-                  danger={a === "deleteNote"}
-                  onClick={() => {
-                    closeMenu();
-                    void act(a as Parameters<typeof act>[0]);
-                  }}
-                >
-                  {label}
-                </MenuItem>
-              ))}
-            </>
-          )}
-        </Dropdown>
         {toast && <span className="ml-auto text-ink-soft" role="status">{toast}</span>}
       </div>
 

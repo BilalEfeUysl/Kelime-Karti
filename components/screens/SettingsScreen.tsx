@@ -12,7 +12,6 @@ import { useStudySettings } from "@/components/app/data";
 import { Button, InfoRow, Notice, Section, SelectField } from "@/components/ui";
 import { setSetting } from "@/lib/db/mutations";
 import { formatBytes, isStandalone, storageInfo, timeAgo } from "@/lib/storage";
-import { getThemePref, setThemePref, type ThemePref } from "@/lib/theme";
 
 export function SettingsScreen() {
   return (
@@ -206,44 +205,12 @@ function SyncSection() {
   );
 }
 
-const THEMES: { value: ThemePref; label: string }[] = [
-  { value: "system", label: "Sistem" },
-  { value: "light", label: "Açık" },
-  { value: "dark", label: "Koyu" },
-];
-
 function ThemeSection() {
-  const [pref, setPref] = useState<ThemePref>("system");
-  useEffect(() => setPref(getThemePref()), []);
-  // Sistem teması değişirse (ör. akşam otomatik koyu) uygula
-  useEffect(() => {
-    if (pref !== "system") return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => setThemePref("system");
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, [pref]);
-
   return (
     <Section title="Görünüm">
-      <div role="radiogroup" aria-label="Tema" className="inline-flex rounded-lg border border-rule p-1">
-        {THEMES.map((t) => (
-          <button
-            key={t.value}
-            type="button"
-            role="radio"
-            aria-checked={pref === t.value}
-            onClick={() => {
-              setPref(t.value);
-              setThemePref(t.value);
-            }}
-            className="min-h-9 rounded-md px-4 text-sm font-medium text-ink-soft aria-checked:bg-accent aria-checked:text-accent-ink"
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-      <p className="mt-2 text-sm text-ink-soft">Tema ve aşağıdaki görünüm tercihleri sadece bu cihaz için geçerlidir.</p>
+      <p className="text-sm text-ink-soft">
+        Açık / koyu tema için menüdeki güneş–ay düğmesini kullan. Buradaki tercihler sadece bu cihaz için geçerlidir.
+      </p>
       <AppearanceSettings />
     </Section>
   );
