@@ -16,7 +16,7 @@ import { DECK_LIMITS_SETTING, useDayInfo, useDeckLimits, useDecks, useOptionsRes
 import { type CardKey, CardFrame } from "@/components/card/CardFrame";
 import { CardInfoModal } from "@/components/study/CardInfoModal";
 import { EditNoteModal } from "@/components/study/EditNoteModal";
-import { Button, Notice } from "@/components/ui";
+import { Button, Dropdown, MenuItem, Notice } from "@/components/ui";
 import type { CardRow, DeckRow } from "@/lib/db/types";
 import { buildDeckTree, flattenDeckTree } from "@/lib/decks";
 import { resolveMediaInHtml } from "@/lib/media-url";
@@ -347,7 +347,6 @@ function Session({
   const [stale, setStale] = useState<{ id: string; sched: string } | null>(null);
   const [modal, setModal] = useState<"edit" | "info" | "ai" | "keys" | null>(null);
   const look = useAppearance();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [exampleId, setExampleId] = useState<string | null>(null);
   // Çizilecek HTML (resimler çözüldükten sonra); hangi kart/yüz için olduğu da tutulur
@@ -478,7 +477,6 @@ function Session({
   const act = useCallback(
     async (action: "flag" | "mark" | "buryCard" | "buryNote" | "suspendCard" | "suspendNote" | "deleteNote", flag = 0) => {
       if (!db || !card) return;
-      setMenuOpen(false);
       const cardId = card.id;
       const meta = { cardId };
       if (action === "flag") await undo.run("Bayrak", () => toggleFlag(db, [cardId], flag), meta);
@@ -680,35 +678,34 @@ function Session({
           Kart bilgisi
         </button>
         <AskButton onClick={() => setModal("ai")} />
-        <div className="relative">
-          <button type="button" aria-expanded={menuOpen} onClick={() => setMenuOpen((o) => !o)} className="rounded-md px-2.5 py-1.5 text-ink-soft hover:bg-ink/5 hover:text-ink">
-            Diğer ▾
-          </button>
-          {menuOpen && <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(false)} aria-hidden />}
-          {menuOpen && (
-            <div className="absolute bottom-full left-0 z-30 mb-1 w-64 rounded-lg border border-rule bg-surface p-1 shadow-lg sm:bottom-auto sm:top-full sm:mt-1">
+        <Dropdown align="left" width={256} trigger="Diğer ▾" className="rounded-md px-2.5 py-1.5 text-ink-soft hover:bg-ink/5 hover:text-ink">
+          {(closeMenu) => (
+            <>
               <div className="flex flex-wrap gap-1 px-2 py-1.5">
                 {FLAG_COLORS.slice(1).map((c, i) => (
                   <button
                     key={c}
                     type="button"
-                    onClick={() => void act("flag", i + 1)}
+                    onClick={() => {
+                      closeMenu();
+                      void act("flag", i + 1);
+                    }}
                     className={`size-7 rounded-full border-2 ${card.flags === i + 1 ? "border-ink" : "border-transparent"}`}
                     style={{ background: c }}
                     aria-label={`${FLAG_NAMES[i + 1]} bayrak (Ctrl+${i + 1})`}
                   />
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setModal("info");
-                }}
-                className="block w-full rounded-md px-3 py-2 text-left hover:bg-ink/5 sm:hidden"
-              >
-                Kart bilgisi
-              </button>
+              <div className="sm:hidden">
+                <MenuItem
+                  onClick={() => {
+                    closeMenu();
+                    setModal("info");
+                  }}
+                >
+                  Kart bilgisi
+                </MenuItem>
+              </div>
               {[
                 ["mark", marked ? "İşareti kaldır (*)" : "Notu işaretle (*)"],
                 ["buryCard", "Kartı yarına ertele (-)"],
@@ -717,18 +714,20 @@ function Session({
                 ["suspendNote", "Notu askıya al (!)"],
                 ["deleteNote", "Notu sil"],
               ].map(([a, label]) => (
-                <button
+                <MenuItem
                   key={a}
-                  type="button"
-                  onClick={() => void act(a as Parameters<typeof act>[0])}
-                  className={`block w-full rounded-md px-3 py-2 text-left hover:bg-ink/5 ${a === "deleteNote" ? "text-danger" : ""}`}
+                  danger={a === "deleteNote"}
+                  onClick={() => {
+                    closeMenu();
+                    void act(a as Parameters<typeof act>[0]);
+                  }}
                 >
                   {label}
-                </button>
+                </MenuItem>
               ))}
-            </div>
+            </>
           )}
-        </div>
+        </Dropdown>
         {toast && <span className="ml-auto text-ink-soft" role="status">{toast}</span>}
       </div>
 

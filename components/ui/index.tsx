@@ -1,6 +1,7 @@
 "use client";
 // Küçük, tekrar kullanılan arayüz parçaları (buton, metin kutusu, bölüm, uyarı).
-import { type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, useEffect, useRef } from "react";
+import { type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -188,5 +189,114 @@ export function SelectField({
         ))}
       </select>
     </label>
+  );
+}
+
+/**
+ * Açılır menü. Menü sayfanın en üstünde (portal) ve ekrana sabit konumda
+ * çizilir: kutuların kenarında kesilmez, altta yer yoksa yukarı açılır,
+ * ekranın sağından/solundan taşmaz. Dışarı tıklayınca ya da Esc'ye basınca
+ * kapanır.
+ */
+export function Dropdown({
+  trigger,
+  children,
+  align = "right",
+  width = 224,
+  label,
+  className = "",
+}: {
+  /** Düğmenin içeriği */
+  trigger: ReactNode;
+  /** Menünün içeriği; close() ile kapatılır */
+  children: (close: () => void) => ReactNode;
+  align?: "left" | "right";
+  width?: number;
+  /** Ekran okuyucu için düğme adı */
+  label?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top?: number; bottom?: number; maxHeight: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const close = () => setOpen(false);
+
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return;
+    const place = () => {
+      const r = btnRef.current!.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const w = Math.min(width, vw - 16);
+      let left = align === "right" ? r.right - w : r.left;
+      left = Math.max(8, Math.min(left, vw - w - 8));
+      // Telefonda alttaki menü / cevap çubuğu (~60-80px + güvenli alan) da hesaba katılır
+      const bottomReserve = vw < 768 ? 96 : 8;
+      const below = vh - r.bottom - bottomReserve;
+      const above = r.top - 8;
+      if (below >= 240 || below >= above) setPos({ left, top: r.bottom + 4, maxHeight: Math.max(120, below - 4) });
+      else setPos({ left, bottom: vh - r.top + 4, maxHeight: Math.max(120, above - 4) });
+    };
+    place();
+    // Sayfa kayarsa menü düğmenin yanında kalsın (menünün kendi içindeki kaydırma hariç)
+    const onScroll = (e: Event) => {
+      if (e.target instanceof Node && document.getElementById("kk-dropdown")?.contains(e.target)) return;
+      place();
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open, align, width]);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={label}
+        onClick={() => setOpen((o) => !o)}
+        className={className}
+      >
+        {trigger}
+      </button>
+      {open &&
+        pos &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-[60]" onMouseDown={close} onTouchStart={close} aria-hidden />
+            <div
+              id="kk-dropdown"
+              role="menu"
+              className="fixed z-[61] overflow-y-auto rounded-lg border border-rule bg-surface p-1 text-ink shadow-lg"
+              style={{ left: pos.left, top: pos.top, bottom: pos.bottom, width: Math.min(width, window.innerWidth - 16), maxHeight: pos.maxHeight }}
+            >
+              {children(close)}
+            </div>
+          </>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+/** Dropdown içindeki bir satır */
+export function MenuItem({ onClick, children, danger }: { onClick: () => void; children: ReactNode; danger?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-ink/5 ${danger ? "text-danger" : ""}`}
+    >
+      {children}
+    </button>
   );
 }

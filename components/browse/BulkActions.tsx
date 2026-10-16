@@ -9,7 +9,7 @@ import { writeJSON } from "@/lib/storage";
 import { useDayInfo, useDeckList } from "@/components/app/data";
 import { useUndo } from "@/components/app/undo";
 import { TagInput } from "@/components/editor/TagInput";
-import { Button, Modal, Notice, SelectField, TextField } from "@/components/ui";
+import { Button, Dropdown, MenuItem, Modal, Notice, SelectField, TextField } from "@/components/ui";
 import {
   addTags,
   changeDeck,
@@ -44,39 +44,10 @@ interface Props {
 }
 
 function MenuButton({ label, children }: { label: ReactNode; children: (close: () => void) => ReactNode }) {
-  const [open, setOpen] = useState(false);
   return (
-    <div className="relative">
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-        className="rounded-md px-2.5 py-1.5 text-sm font-medium text-ink-soft hover:bg-ink/5 hover:text-ink"
-      >
-        {label} ▾
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} aria-hidden />
-          <div role="menu" className="absolute left-0 top-full z-40 mt-1 min-w-52 rounded-lg border border-rule bg-surface p-1 shadow-lg">
-            {children(() => setOpen(false))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function MenuItem({ onClick, children, danger }: { onClick: () => void; children: ReactNode; danger?: boolean }) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-ink/5 ${danger ? "text-danger" : ""}`}
-    >
+    <Dropdown align="left" width={240} trigger={<>{label} ▾</>} className="rounded-md px-2.5 py-1.5 text-sm font-medium text-ink-soft hover:bg-ink/5 hover:text-ink">
       {children}
-    </button>
+    </Dropdown>
   );
 }
 

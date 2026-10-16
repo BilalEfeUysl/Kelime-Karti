@@ -9,7 +9,7 @@ import { type DragEvent, type FormEvent, useMemo, useState } from "react";
 import { useApp } from "@/components/app/AppProvider";
 import { useUndo } from "@/components/app/undo";
 import { useDayInfo, useDecks, useOptionsResolver } from "@/components/app/data";
-import { Button, Modal, Notice } from "@/components/ui";
+import { Button, Dropdown, MenuItem, Modal, Notice } from "@/components/ui";
 import { updateRow } from "@/lib/db/mutations";
 import type { DeckRow } from "@/lib/db/types";
 import {
@@ -220,7 +220,6 @@ function DeckItem({
   const [dialog, setDialog] = useState<"rename" | "delete" | "move" | "filter" | null>(null);
   const { day, now } = useDayInfo();
   const filtered = node.deck.is_filtered;
-  const [menu, setMenu] = useState(false);
   const [draft, setDraft] = useState(node.deck.name);
   const [error, setError] = useState<string | null>(null);
   const [over, setOver] = useState(false);
@@ -293,7 +292,7 @@ function DeckItem({
         ) : null}
         <Link
           href={`/calis?deste=${node.deck.id}`}
-          className="min-w-0 flex-1 truncate py-2 text-[16px] font-medium hover:text-accent"
+          className="line-clamp-2 min-w-0 flex-1 py-2 text-[16px] font-medium leading-snug break-words hover:text-accent"
           title={filtered ? `${node.fullName} (filtreli deste)` : node.fullName}
         >
           {filtered && (
@@ -306,35 +305,27 @@ function DeckItem({
         <CountCell n={counts?.new} cls="text-accent" />
         <CountCell n={counts?.learn} cls="text-warn" />
         <CountCell n={counts?.review} cls="text-ok" />
-        <div className="relative">
-          <button
-            type="button"
-            aria-label={`${node.deck.name} menüsü`}
-            aria-expanded={menu}
-            onClick={() => setMenu((m) => !m)}
-            className="grid size-8 place-items-center rounded-md text-ink-soft hover:bg-ink/5"
-          >
-            ⋯
-          </button>
-          {menu && <div className="fixed inset-0 z-20" onClick={() => setMenu(false)} aria-hidden />}
-          {menu && (
-            <div className="absolute right-0 top-full z-30 mt-1 w-52 rounded-lg border border-rule bg-surface p-1 shadow-lg">
-              {menuItems.map(([label, fn]) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => {
-                    setMenu(false);
-                    fn();
-                  }}
-                  className={`block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-ink/5 ${label === "Sil" ? "text-danger" : ""}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <Dropdown
+          label={`${node.deck.name} menüsü`}
+          width={208}
+          className="grid size-8 shrink-0 place-items-center rounded-md text-ink-soft hover:bg-ink/5"
+          trigger="⋯"
+        >
+          {(closeMenu) =>
+            menuItems.map(([label, fn]) => (
+              <MenuItem
+                key={label}
+                danger={label === "Sil"}
+                onClick={() => {
+                  closeMenu();
+                  fn();
+                }}
+              >
+                {label}
+              </MenuItem>
+            ))
+          }
+        </Dropdown>
       </div>
 
       {dialog === "rename" && (

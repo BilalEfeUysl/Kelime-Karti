@@ -23,7 +23,7 @@ import {
 import { DetailPanel } from "@/components/browse/DetailPanel";
 import { BrowseSidebar } from "@/components/browse/Sidebar";
 import { FilteredDeckDialog } from "@/components/study/DeckTools";
-import { Button, Modal, Notice, Spinner } from "@/components/ui";
+import { Button, Dropdown, Modal, Notice, Spinner } from "@/components/ui";
 import { toggleFlag } from "@/lib/study/actions";
 import { readJSON, writeJSON } from "@/lib/storage";
 
@@ -306,39 +306,32 @@ export function BrowserScreen() {
 }
 
 function ColumnsMenu({ mode, columns, onChange }: { mode: BrowseMode; columns: ColumnId[]; onChange: (c: ColumnId[]) => void }) {
-  const [open, setOpen] = useState(false);
   const available = COLUMNS.filter((c) => mode === "notes" || c.id !== "cardCount");
   return (
-    <div className="relative">
-      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="rounded-md px-2.5 py-1.5 text-sm font-medium text-ink-soft hover:bg-ink/5 hover:text-ink">
-        Sütunlar ▾
-      </button>
-      {open && (
+    <Dropdown trigger="Sütunlar ▾" width={224} className="rounded-md px-2.5 py-1.5 text-sm font-medium text-ink-soft hover:bg-ink/5 hover:text-ink">
+      {() => (
         <>
-          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} aria-hidden />
-          <div className="absolute right-0 top-full z-40 mt-1 w-56 rounded-lg border border-rule bg-surface p-1.5 shadow-lg">
-            {available.map((c) => {
-              const on = columns.includes(c.id);
-              return (
-                <label key={c.id} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-ink/5">
-                  <input
-                    type="checkbox"
-                    checked={on}
-                    disabled={on && columns.length === 1}
-                    onChange={() => onChange(on ? columns.filter((x) => x !== c.id) : COLUMNS.map((x) => x.id).filter((id) => id === c.id || columns.includes(id)))}
-                    className="size-4"
-                  />
-                  {c.label}
-                </label>
-              );
-            })}
-            <button type="button" onClick={() => onChange(DEFAULT_COLUMNS[mode])} className="mt-1 w-full rounded-md px-2 py-1.5 text-left text-sm text-accent hover:bg-accent/10">
-              Varsayılana dön
-            </button>
-          </div>
+          {available.map((c) => {
+            const on = columns.includes(c.id);
+            return (
+              <label key={c.id} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-ink/5">
+                <input
+                  type="checkbox"
+                  checked={on}
+                  disabled={on && columns.length === 1}
+                  onChange={() => onChange(on ? columns.filter((x) => x !== c.id) : COLUMNS.map((x) => x.id).filter((id) => id === c.id || columns.includes(id)))}
+                  className="size-4"
+                />
+                {c.label}
+              </label>
+            );
+          })}
+          <button type="button" onClick={() => onChange(DEFAULT_COLUMNS[mode])} className="mt-1 w-full rounded-md px-2 py-1.5 text-left text-sm text-accent hover:bg-accent/10">
+            Varsayılana dön
+          </button>
         </>
       )}
-    </div>
+    </Dropdown>
   );
 }
 

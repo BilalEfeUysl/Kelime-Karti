@@ -2,7 +2,7 @@
 // Üstte çıkan bantlar: yeni sürüm hazır, ana ekrana ekle önerisi,
 // oturum süresi doldu, ilk eşleme tamamlanmadı.
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isStandalone, readJSON, writeJSON } from "@/lib/storage";
 import { useApp } from "./AppProvider";
 import { useOnline, useSyncStatus } from "./hooks";
@@ -23,6 +23,16 @@ const linkBtn = "rounded-md px-2.5 py-1.5 font-semibold text-accent hover:bg-acc
  *  başlayabilir; bu yüzden hem "bekleyen" hem "inmekte olan" sürümü izliyoruz. */
 export function UpdateBanner() {
   const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
+  const openedAt = useRef(Date.now());
+
+  // Uygulama yeni açıldıysa (ilk 20 saniye) yeni sürüm sormadan devreye girer:
+  // kullanıcı henüz bir şey yapmadı, kaybedecek bir şey yok. Sonradan bulunan
+  // güncellemeler için bant çıkar (çalışma yarıda kesilmesin).
+  useEffect(() => {
+    if (!waiting || Date.now() - openedAt.current > 20_000) return;
+    navigator.serviceWorker.addEventListener("controllerchange", () => window.location.reload(), { once: true });
+    waiting.postMessage({ type: "SKIP_WAITING" });
+  }, [waiting]);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || process.env.NODE_ENV === "development") return;
@@ -50,11 +60,12 @@ export function UpdateBanner() {
     };
   }, []);
 
-  if (!waiting) return null;
   const reload = () => {
+    if (!waiting) return;
     navigator.serviceWorker.addEventListener("controllerchange", () => window.location.reload(), { once: true });
     waiting.postMessage({ type: "SKIP_WAITING" });
   };
+  if (!waiting) return null;
   return (
     <Banner
       actions={

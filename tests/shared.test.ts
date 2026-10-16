@@ -100,3 +100,19 @@ it("üyenin kendi destesi ve notları yöneticiye gitmez", async () => {
   await syncAll(user, admin);
   expect(alive(await admin.db.decks.toArray()).map((d) => d.name)).not.toContain("Emre'nin destesi");
 });
+
+it("yönetici içerik gönderince üyeye haber gider (sync_heads); sadece cevap verince gitmez", async () => {
+  const { admin, basic, deck } = await setup();
+  const head = async () =>
+    (await server.pg.query<{ n: number }>("select count(*)::int as n from public.sync_heads where user_id = $1", [userId])).rows[0].n;
+  await server.pg.query("delete from public.sync_heads");
+  const { cards } = await addNote(admin.db, { noteType: basic, deckId: deck.id, fields: { front: "abandon", back: "terk etmek" } });
+  await admin.sync();
+  expect(await head()).toBe(1);
+
+  await server.pg.query("delete from public.sync_heads");
+  time.advance(60_000);
+  await updateRow(admin.db, "cards", cards[0].id, { state: 2, reps: 1 });
+  await admin.sync();
+  expect(await head()).toBe(0);
+});
