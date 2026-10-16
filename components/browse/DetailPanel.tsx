@@ -169,6 +169,8 @@ export function DetailPanel({
   const [info, setInfo] = useState(false);
   const [ask, setAsk] = useState(false);
   const optionsFor = useOptionsResolver(decks);
+  const { db } = useApp();
+  const firstExample = useLiveQuery(async () => (db ? (await approvedExamples(db, note.id))[0] : undefined), [db, note.id, note.updated_at]);
   if (!noteType) return <Notice tone="error">Bu notun tipi bulunamadı.</Notice>;
   return (
     <div className="space-y-3">
@@ -205,6 +207,7 @@ export function DetailPanel({
           target={{
             ...noteWord(note, noteType),
             noteId: note.id,
+            sentence: firstExample ? { text: firstExample.text, translation: firstExample.translation } : undefined,
             context: noteType.fields.map((f) => `${f.name}: ${stripHtml(note.fields[f.id] ?? "")}`).join("\n"),
           }}
           onClose={() => setAsk(false)}

@@ -23,11 +23,13 @@ async function authHeaders(): Promise<Record<string, string>> {
 
 export async function aiFetch(path: string, init: { method?: string; body?: unknown } = {}): Promise<Response> {
   if (typeof navigator !== "undefined" && !navigator.onLine) throw new AiClientError("İnternet gerekiyor.", "offline", 0);
+  // Oturum hatası "internet yok" gibi görünmesin diye başlıklar try'ın dışında alınır
+  const headers = await authHeaders();
   let res: Response;
   try {
     res = await fetch(path, {
       method: init.method ?? (init.body === undefined ? "GET" : "POST"),
-      headers: await authHeaders(),
+      headers,
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
     });
   } catch {

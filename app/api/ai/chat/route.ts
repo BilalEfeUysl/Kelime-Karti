@@ -8,7 +8,9 @@ interface ChatMessage {
 
 const SYSTEM =
   "Sen Türk öğrencilere YDS için İngilizce öğreten, kısa ve net cevap veren yardımcı bir öğretmensin. " +
-  "Türkçe cevap ver (İngilizce örnekler hariç). Gerekirse madde işaretleri kullan; gereksiz uzatma.";
+  "Türkçe cevap ver (İngilizce örnekler hariç). Soru karttaki örnek cümleyle ilgiliyse o cümleye göre cevapla. " +
+  "Biçim: kısa paragraflar; gerekiyorsa '- ' ile madde işaretleri; önemli kelimeleri **kalın** yaz; " +
+  "İngilizce örnek cümleleri *italik* yaz. Başlık, tablo ve uzun giriş cümleleri kullanma; gereksiz uzatma.";
 
 export async function POST(req: Request) {
   try {

@@ -15,12 +15,15 @@ import { addExamples } from "@/lib/ai/local";
 import type { Explanation } from "@/lib/ai/prompts";
 import { writeJSON } from "@/lib/storage";
 import { useKeyStatus } from "./hooks";
+import { Markdown } from "./Markdown";
 
 export const PREFILL_KEY = "kk.add.prefill";
 
 export interface AskTarget {
   word: string;
   meaning?: string;
+  /** Kartta o an gösterilen örnek cümle (sohbette bağlam olur, hazır sorular çıkar) */
+  sentence?: { text: string; translation?: string | null };
   /** Örnekleri eklenecek not (yoksa "örneklere ekle" gizlenir) */
   noteId?: string;
   /** Sohbette bağlam olarak gidecek kart içeriği (düz metin) */
@@ -29,13 +32,46 @@ export interface AskTarget {
 
 const PRIVACY = "Kişisel bilgi yazma: ücretsiz katmanda Google verileri model geliştirmek için kullanabilir.";
 
-function List({ title, items }: { title: string; items: string[] }) {
+function Pills({ title, items }: { title: string; items: string[] }) {
   if (!items.length) return null;
   return (
     <div>
-      <h4 className="text-xs font-semibold text-ink-soft">{title}</h4>
-      <p className="mt-0.5">{items.join(", ")}</p>
+      <h4 className="mb-1.5 text-xs font-semibold text-ink-soft">{title}</h4>
+      <div className="flex flex-wrap gap-1.5">
+        {items.map((x) => (
+          <span key={x} className="rounded-full bg-ink/5 px-2.5 py-1 text-sm">
+            {x}
+          </span>
+        ))}
+      </div>
     </div>
+  );
+}
+
+/** Cümlede kelimeyi (çekimli hâlleri dahil) kalın ve renkli gösterir */
+function Highlight({ text, word }: { text: string; word: string }) {
+  const w = word.trim();
+  if (w.length < 2) return <>{text}</>;
+  const esc = w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let re: RegExp;
+  try {
+    re = new RegExp(`(?<![\\p{L}])(${esc}[\\p{L}]*)`, "giu");
+  } catch {
+    return <>{text}</>;
+  }
+  const parts = text.split(re);
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <b key={i} className="font-semibold not-italic text-accent">
+            {part}
+          </b>
+        ) : (
+          part
+        ),
+      )}
+    </>
   );
 }
 
@@ -77,19 +113,35 @@ export function AskPanel({ target, onClose }: { target: AskTarget; onClose: () =
     if (online && target.word) void explain();
   }, [online, target.word, explain]);
 
-  useEffect(() => chatEnd.current?.scrollIntoView({ block: "end" }), [messages]);
+  // Not: yeni tarayıcılarda scrollIntoView bir Promise döndürür; etkiden geri
+  // döndürülmemeli (React onu temizleme fonksiyonu sanıp hata verir)
+  useEffect(() => {
+    if (messages.length) chatEnd.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [messages]);
 
-  const send = async (e: FormEvent) => {
+  const chatContext = [
+    `Kelime: ${target.word}`,
+    target.meaning && `Karttaki anlam: ${target.meaning}`,
+    target.sentence && `Kartta gösterilen örnek cümle: "${target.sentence.text}"${target.sentence.translation ? ` (çevirisi: ${target.sentence.translation})` : ""}`,
+    target.context && `Kartın tüm alanları:\n${target.context}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const ask = (question: string) => void sendText(question);
+  const send = (e: FormEvent) => {
     e.preventDefault();
-    const text = input.trim();
+    void sendText(input);
+  };
+  const sendText = async (raw: string) => {
+    const text = raw.trim();
     if (!text || streaming) return;
     const next = [...messages, { role: "user" as const, text }];
     setMessages([...next, { role: "model", text: "" }]);
     setInput("");
     setStreaming(true);
     try {
-      const context = [`Kelime: ${target.word}`, target.meaning && `Anlam: ${target.meaning}`, target.context].filter(Boolean).join("\n");
-      await chatStream(next, context, (t) => setMessages([...next, { role: "model", text: t }]));
+      await chatStream(next, chatContext, (t) => setMessages([...next, { role: "model", text: t }]));
       void keyStore.refresh();
     } catch (err) {
       setMessages([...next, { role: "model", text: `⚠ ${err instanceof AiClientError ? err.message : "Cevap alınamadı."}` }]);
@@ -117,11 +169,18 @@ export function AskPanel({ target, onClose }: { target: AskTarget; onClose: () =
 
   const noKey = online && status && !status.hasKey;
 
+  const quick = [
+    ...(target.sentence
+      ? ["Bu cümleyi Türkçeye çevir", "Kelime bu cümlede tam olarak ne anlama geliyor?", "Bu cümlenin dil bilgisini açıkla"]
+      : []),
+    "Benzer kelimelerden farkı ne?",
+    "Başka bir örnek cümle ver",
+  ];
+
   return (
-    <Modal title={`Gemini: ${target.word}`} onClose={onClose} wide>
-      <div className="space-y-4">
+    <Modal title={`Gemini · ${target.word}`} onClose={onClose} wide>
+      <div className="space-y-5">
         {!online && <Notice tone="warn">İnternet gerekiyor. Uygulamanın geri kalanı internetsiz çalışmaya devam eder.</Notice>}
-        {loading && <p role="status" className="text-ink-soft">Gemini düşünüyor…</p>}
         {error && (
           <Notice tone="error">
             {error}
@@ -136,41 +195,80 @@ export function AskPanel({ target, onClose }: { target: AskTarget; onClose: () =
           </Notice>
         )}
 
+        {target.sentence && (
+          <figure className="rounded-xl border-l-4 border-accent/50 bg-accent/5 px-4 py-3">
+            <figcaption className="mb-1 text-xs font-semibold text-ink-soft">Karttaki cümle</figcaption>
+            <blockquote className="italic leading-relaxed">
+              <Highlight text={target.sentence.text} word={target.word} />
+            </blockquote>
+            {target.sentence.translation && <p className="mt-1 text-sm text-ink-soft">{target.sentence.translation}</p>}
+          </figure>
+        )}
+
+        {loading && !expl && (
+          <div role="status" className="space-y-2 rounded-xl border border-rule bg-surface p-4">
+            <div className="h-6 w-40 animate-pulse rounded bg-ink/10" />
+            <div className="h-4 w-full animate-pulse rounded bg-ink/5" />
+            <div className="h-4 w-2/3 animate-pulse rounded bg-ink/5" />
+            <span className="sr-only">Gemini düşünüyor…</span>
+          </div>
+        )}
+
         {expl && (
-          <section className="space-y-3 rounded-xl border border-rule bg-surface p-4 text-[15px]">
-            <div className="flex flex-wrap items-baseline gap-x-2">
-              <span className="font-display text-xl font-semibold">{expl.word}</span>
-              {expl.partOfSpeech && <span className="text-sm text-ink-soft">{expl.partOfSpeech}</span>}
-              {cached && <span className="ml-auto text-xs text-ink-soft">önbellekten, hak harcanmadı</span>}
-            </div>
-            {expl.meaningsTr.length > 0 && <p className="font-medium">{expl.meaningsTr.join(", ")}</p>}
-            {expl.definitionEn && <p className="text-ink-soft">{expl.definitionEn}</p>}
+          <section className="space-y-4 rounded-xl border border-rule bg-surface p-4 sm:p-5">
+            <header>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h3 className="font-display text-2xl font-semibold">{expl.word}</h3>
+                {expl.partOfSpeech && (
+                  <span className="rounded-full border border-rule px-2.5 py-0.5 text-xs font-medium text-ink-soft">{expl.partOfSpeech}</span>
+                )}
+                {cached && <span className="ml-auto text-xs text-ink-soft">önbellekten · hak harcanmadı</span>}
+              </div>
+              {expl.meaningsTr.length > 0 && (
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {expl.meaningsTr.map((m) => (
+                    <span key={m} className="rounded-full bg-accent/10 px-3 py-1 text-[15px] font-medium text-accent">
+                      {m}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {expl.definitionEn && <p className="mt-2.5 text-[15px] italic leading-relaxed text-ink-soft">{expl.definitionEn}</p>}
+            </header>
+
             {expl.examples.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-ink-soft">Örnekler</h4>
-                <ul className="mt-1 space-y-1.5">
+                <h4 className="mb-1.5 text-xs font-semibold text-ink-soft">Örnek cümleler</h4>
+                <ul className="space-y-2.5">
                   {expl.examples.map((x) => (
-                    <li key={x.en}>
-                      <span className="italic">{x.en}</span>
-                      {x.tr && <span className="block text-sm text-ink-soft">{x.tr}</span>}
+                    <li key={x.en} className="border-l-2 border-rule pl-3">
+                      <p className="italic leading-relaxed">
+                        <Highlight text={x.en} word={expl.word} />
+                      </p>
+                      {x.tr && <p className="text-sm text-ink-soft">{x.tr}</p>}
                     </li>
                   ))}
                 </ul>
               </div>
             )}
-            <List title="Eş anlamlılar" items={expl.synonyms} />
-            <List title="Zıt anlamlılar" items={expl.antonyms} />
-            <List title="Sık kalıplar" items={expl.collocations} />
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Pills title="Eş anlamlılar" items={expl.synonyms} />
+              <Pills title="Zıt anlamlılar" items={expl.antonyms} />
+            </div>
+            <Pills title="Sık kullanılan kalıplar" items={expl.collocations} />
+
             {expl.ydsNote && (
-              <div>
-                <h4 className="text-xs font-semibold text-ink-soft">YDS notu</h4>
-                <p className="mt-0.5">{expl.ydsNote}</p>
+              <div className="rounded-lg border-l-4 border-mark bg-mark/15 px-3.5 py-2.5">
+                <h4 className="text-xs font-semibold text-ink-soft">YDS ipucu</h4>
+                <p className="mt-0.5 leading-relaxed">{expl.ydsNote}</p>
               </div>
             )}
-            <div className="flex flex-wrap gap-2 pt-1">
+
+            <div className="flex flex-wrap gap-2 border-t border-rule pt-3">
               {target.noteId && expl.examples.length > 0 && (
                 <Button variant="secondary" onClick={() => void addToNote()} disabled={added !== null}>
-                  {added === null ? "Bu cümleleri örneklere ekle" : added ? `${added} cümle eklendi` : "Hepsi zaten ekli"}
+                  {added === null ? "Cümleleri karta ekle" : added ? `${added} cümle eklendi` : "Hepsi zaten ekli"}
                 </Button>
               )}
               <Button variant="ghost" onClick={createCard}>
@@ -185,24 +283,56 @@ export function AskPanel({ target, onClose }: { target: AskTarget; onClose: () =
           </section>
         )}
 
-        <section aria-label="Sohbet" className="space-y-2">
-          {messages.map((m, i) => (
-            <div
-              key={i}
-              className={`max-w-[90%] whitespace-pre-wrap rounded-xl px-3 py-2 text-[15px] ${m.role === "user" ? "ml-auto bg-accent/15" : "bg-surface"}`}
-            >
-              {m.text || (streaming && i === messages.length - 1 ? "…" : "")}
+        <section aria-label="Sohbet" className="space-y-3">
+          <h3 className="font-display text-lg font-semibold">Soru sor</h3>
+          {messages.length > 0 && (
+            <div className="space-y-3">
+              {messages.map((m, i) =>
+                m.role === "user" ? (
+                  <div key={i} className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] text-accent-ink">
+                    {m.text}
+                  </div>
+                ) : (
+                  <div key={i} className="max-w-[92%] rounded-2xl rounded-bl-md border border-rule bg-surface px-4 py-3 text-[15px]">
+                    <div className="mb-1 text-xs font-semibold text-accent">Gemini</div>
+                    {m.text ? (
+                      <Markdown text={m.text} />
+                    ) : (
+                      <span className="inline-flex gap-1 py-1" aria-label="Yazıyor">
+                        <span className="size-1.5 animate-bounce rounded-full bg-ink-soft [animation-delay:-0.3s]" />
+                        <span className="size-1.5 animate-bounce rounded-full bg-ink-soft [animation-delay:-0.15s]" />
+                        <span className="size-1.5 animate-bounce rounded-full bg-ink-soft" />
+                      </span>
+                    )}
+                  </div>
+                ),
+              )}
             </div>
-          ))}
+          )}
           <div ref={chatEnd} />
+          {!streaming && (
+            <div className="flex flex-wrap gap-1.5">
+              {quick.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  disabled={!online}
+                  onClick={() => ask(q)}
+                  className="rounded-full border border-rule bg-surface px-3 py-1.5 text-sm text-ink-soft hover:border-accent hover:text-accent disabled:opacity-40"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
           <form onSubmit={send} className="flex gap-2">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={`“${target.word}” hakkında sor (ör. farkı ne, nasıl telaffuz edilir?)`}
+              placeholder={target.sentence ? "Kelime ya da cümle hakkında sor…" : `“${target.word}” hakkında sor…`}
               aria-label="Gemini'ye soru"
               disabled={!online || streaming}
-              className="min-h-11 min-w-0 flex-1 rounded-lg border border-rule bg-surface px-3 focus:border-accent focus:outline-none"
+              className="min-h-11 min-w-0 flex-1 rounded-lg border border-rule bg-surface px-3 placeholder:text-ink-soft/70 focus:border-accent focus:outline-none"
             />
             <Button type="submit" disabled={!online || streaming || !input.trim()}>
               Sor

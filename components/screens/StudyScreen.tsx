@@ -41,7 +41,7 @@ import type { ScheduleContext } from "@/lib/scheduler/fsrs";
 import { AskButton, AskPanel } from "@/components/ai/AskPanel";
 import { noteWord } from "@/lib/ai/local";
 import { stripHtml } from "@/lib/text";
-import { noteTypeLabel } from "@/lib/notetypes/labels";
+import { fieldLabel, noteTypeLabel } from "@/lib/notetypes/labels";
 
 const ANSWER_STYLE: Record<Answer, string> = {
   1: "bg-danger/10 text-danger border-danger/30",
@@ -668,7 +668,12 @@ function Session({
           target={{
             ...noteWord(note, noteType),
             noteId: note.id,
-            context: noteType?.fields.map((f) => `${f.name}: ${stripHtml(note.fields[f.id] ?? "")}`).join("\n"),
+            // Kartta o an görünen örnek cümle (sorular onunla ilgili de olabilsin)
+            sentence: (() => {
+              const ex = examples?.find((e) => e.id === exampleId);
+              return ex ? { text: ex.text, translation: ex.translation } : undefined;
+            })(),
+            context: noteType?.fields.map((f) => `${fieldLabel(f.name)}: ${stripHtml(note.fields[f.id] ?? "")}`).join("\n"),
           }}
           onClose={() => setModal(null)}
         />
